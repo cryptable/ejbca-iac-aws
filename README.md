@@ -30,8 +30,8 @@ ansible-vault encrypt group_vars/all/vault.yml
 After this you can run your playbook ass follows.
 
 ```bash
-ansible-playbook playbook.yml --key-file /path/to/private/key/id_rsa --ask-vault-pass
- Vault paasword:
+ansible-playbook playbook.yml --key-file /path/to/private/key/id_rsa --ask-vault-pass --extra-vars="aws_instance_state=present"
+ Vault password:
 ```
 
 It will prompt for your password.

@@ -1,0 +1,95 @@
+---
+
+- name: Install aptitude
+  apt:
+    name: aptitude
+    state: latest
+    update_cache: true
+  become: true
+
+- name: Install required system packages
+  apt:
+    pkg:
+      - apt-transport-https
+      - ca-certificates
+      - curl
+      - software-properties-common
+      - python3-pip
+      - virtualenv
+      - python3-setuptools
+    state: latest
+    update_cache: true
+  become: true
+
+- name: Install python packages with version specifiers
+  ansible.builtin.pip:
+    name:
+      - jsondiff
+  become: true
+
+- name: Add Docker GPG apt Key
+  apt_key:
+    url: https://download.docker.com/linux/ubuntu/gpg
+    state: present
+  become: true
+
+- name: Add Docker Repository
+  apt_repository:
+    repo: deb https://download.docker.com/linux/ubuntu jammy stable
+    state: present
+  become: true
+
+- name: Update apt and install docker-ce and docker-compose
+  apt:
+    pkg: 
+      - docker-ce
+      - docker-compose
+    state: latest
+    update_cache: true
+  become: true
+
+- name: Ensures /opt/docker/ejbca dir exists
+  file: 
+    path: /opt/docker/ejbca 
+    state: directory
+  become: true
+
+- name: deploy ejbca configuration 
+  template:
+    src: web.properties.j2
+    dest: /opt/docker/ejbca/web.properties
+  become: true
+
+- name: deploy docker file 
+  template:
+    src: Dockerfile.j2
+    dest: /opt/docker/ejbca/Dockerfile
+  become: true
+
+- name: Build image and with build args
+  community.docker.docker_image:
+    name: ejbca
+    build:
+      path: /opt/docker/ejbca/
+    source: build
+  become: true
+
+- name: deploy docker compose file
+  template:
+    src: docker-compose.yml.j2
+    dest: /opt/docker/docker-compose.yml
+  become: true
+
+- name: Init a new swarm with default parameters
+  docker_swarm:
+    state: present
+  become: true
+
+- name: Deploy stack from a compose file
+  docker_stack:
+    state: present
+    name: ejbca
+    compose:
+      - /opt/docker/docker-compose.yml
+  become: true
+...

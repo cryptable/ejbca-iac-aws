@@ -1,0 +1,17 @@
+---
+
+hypervisor: aws # https://752625201053.signin.aws.amazon.com/console
+remote_user:
+  aws: ubuntu #ubuntu ##ec2-user #centos
+
+# aws_ami_id: "ami-06358f49b5839867c" #ubuntu 18.04
+# aws_ami_id: "ami-0ff760d16d9497662" # centos 7.7
+aws_ami_id: "ami-0efda064d1b5e46a5" # ubuntu 22.04
+
+aws_region: "eu-north-1"
+aws_profile: "test"
+aws_instance_state: absent # present / absent
+
+aws_webserver_port: 80
+
+...

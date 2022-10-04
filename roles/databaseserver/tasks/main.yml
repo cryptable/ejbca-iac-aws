@@ -1,0 +1,50 @@
+---
+
+- name: Install aptitude
+  apt:
+    name: aptitude
+    state: latest
+    update_cache: true
+  become: true
+
+- name: Install mariadb server
+  apt:
+    pkg:
+      - mariadb-server
+    state: latest
+    update_cache: true
+  become: true
+
+- name: restart mariadb
+  service:
+    name: mariadb
+    state: restarted
+    enabled: yes
+  become: true
+
+- name: Create a new database with name ejbca
+  shell: 'mysql -u root -e "CREATE DATABASE IF NOT EXISTS ejbca CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"'
+  become: true
+
+- name: Create a user ejbca
+  shell: 'mysql -u root -e "GRANT ALL PRIVILEGES ON ejbca.* TO ''ejbca''@''%'' IDENTIFIED BY ''{{ ejbca_mysql_password }}'';"'
+  become: true
+
+- name: Copy my.cnf
+  copy:
+    src: ./files/my.cnf.1
+    dest: /etc/mysql/my.cnf
+  become: true
+
+- name: Copy 50-server.cnf
+  copy:
+    src: ./files/50-server.cnf.1
+    dest: /etc/mysql/mariadb.conf.d/50-server.cnf
+  become: true
+
+- name: restart mariadb again
+  service:
+    name: mariadb
+    state: restarted
+  become: true
+...

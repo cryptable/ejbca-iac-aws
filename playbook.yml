@@ -1,0 +1,204 @@
+---
+
+############################
+# terraform playbook       #
+############################
+
+- hosts: localhost
+  connection: local
+  gather_facts: no
+
+  vars:
+
+  tasks:
+
+    - name: create terraform.tfvars 
+      include_role: 
+        name: terra-provision
+
+    - name: init the terraform if .terraform is not there
+      shell: terraform init
+      args:
+        chdir: "{{ playbook_dir }}/terraform/"
+        creates: "{{ playbook_dir }}/terraform/.terraform/"
+
+    - name: run the terraform script 
+      terraform:
+        project_path: "{{ playbook_dir }}/terraform/"
+        state: "{{ aws_instance_state }}"
+        variables: 
+          aws_region: "{{ aws_region }}"
+          aws_access_key_id: "{{ aws_access_key_id }}"
+          aws_secret_access_key: "{{ aws_secret_access_key }}"
+          aws_ami_id: "{{ aws_ami_id }}"
+          public_key: "{{ public_key }}"
+      register: terra_result
+
+    - name: show terra_result 
+      debug:
+        var: terra_result
+
+    - name: set vm_ip / name
+      set_fact:
+        vm_ip_ejbca: "{{ terra_result.outputs.public_ip_ejbca.value }}"
+        vm_ip_db: "{{ terra_result.outputs.public_ip_db.value }}"
+        vm_private_ip_db: "{{ terra_result.outputs.private_ip_db.value }}"
+      when: 
+        - terra_result.outputs.state_ejbca is defined
+        - terra_result.outputs.state_db is defined
+
+    - name: create the dynamic inventory
+      block: 
+        - name: remove old dynamic group_vars file
+          file:
+            path: "{{ item }}"
+            state: absent
+          with_items:
+            - group_vars/dynamic_ejbca.yml
+            - group_vars/dynamic_db.yml
+        - name: create new linux group_vars file
+          file:
+            path: "{{ item }}"
+            state: touch
+          with_items:
+            - group_vars/dynamic_ejbca.yml
+            - group_vars/dynamic_db.yml
+        - name: create the inventory directory
+          file:
+            path: inventory/
+            state: directory
+        - name: remove old dynamic host file
+          file:
+            path: inventory/hosts
+            state: absent
+        - name: create new dynamic host file
+          file:
+            path: inventory/hosts
+            state: touch
+        - name: add retrieved IP to file
+          blockinfile:
+            path: group_vars/dynamic_ejbca.yml
+            marker: ""
+            block: |
+              ---
+
+              ansible_host: {{ vm_ip_ejbca }}
+              ansible_user: {{ remote_user[hypervisor] }}
+              become_user: {{ remote_user[hypervisor] }}
+              remote_user: {{ remote_user[hypervisor] }}
+              become: true
+              vm_private_ip_db: {{ vm_private_ip_db }}
+
+              ...
+
+        - name: add retrieved IP to file
+          blockinfile:
+            path: group_vars/dynamic_db.yml
+            marker: ""
+            block: |
+              ---
+
+              ansible_host: {{ vm_private_ip_db }}
+              ansible_user: {{ remote_user[hypervisor] }}
+              become_user: {{ remote_user[hypervisor] }}
+              remote_user: {{ remote_user[hypervisor] }}
+              become: true
+              ansible_ssh_common_args: '-o ProxyCommand="ssh -W %h:%p -i ../id_rsa -q ubuntu@{{ vm_ip_ejbca }}"'
+
+              ...
+
+        - name: add retrieved IP to file
+          blockinfile:
+            path: "inventory/hosts"
+            marker: ""
+            block: |
+              [proxy]
+              {{ vm_ip_ejbca }}
+            
+              [dynamic_ejbca]
+              {{ vm_ip_ejbca }}
+
+              [dynamic_db]
+              {{ vm_private_ip_db }}
+
+              [dynamic_db:vars]
+              ansible_ssh_common_args='-o ProxyCommand="ssh -W %h:%p -i ../id_rsa ubuntu@{{ vm_ip_ejbca }}"'
+
+        - name: Add host
+          add_host:
+            hostname: "{{ vm_ip_ejbca }}"
+            groupname: dynamic_ejbca
+            remote_user: "{{ remote_user[hypervisor] }}"
+        - name: Add host
+          add_host:
+            hostname: "{{ vm_private_ip_db }}"
+            groupname: dynamic_db
+            remote_user: "{{ remote_user[hypervisor] }}"
+      when: 
+        - terra_result.outputs.state_ejbca is defined
+        - terra_result.outputs.state_db is defined
+
+    - name: Collect facts again
+      setup:
+
+    ################################
+    # pause                        #
+    ################################
+    - name: Wait 300 seconds for port 22 to become open and contains the string "OpenSSH"
+      wait_for:
+        port: 22
+        host: '{{ vm_ip_ejbca }}'
+        search_regex: OpenSSH
+        delay: 10
+      vars:
+        ansible_connection: local
+      when: vm_ip_ejbca is defined
+
+###########################################
+# playbook for configuration of the ejbca #
+###########################################
+- hosts: dynamic_ejbca
+
+  vars:
+
+  tasks:
+#    - name: Ensures /home/ubuntu/.ssh dir exists
+#      ansible.builtin.file: 
+#        path: /home/ubuntu/.ssh 
+#        state: directory
+#        owner: ubuntu
+#        group: ubuntu
+#        mode: 0600
+#      become: true
+#    - copy: Private SSH key to reach mariadb
+#      ansible.builtin.copy:
+#        src: ../id_rsa
+#        dest: /home/ubuntu/.ssh
+#        owner: ubuntu
+#        group: ubuntu
+#        mode: '0400'
+#      become: true
+#    - copy: Public SSH key to reach mariadb
+#      ansible.builtin.copy:
+#        src: ../id_rsa.pub
+#        dest: /home/ubuntu/.ssh
+#        owner: ubuntu
+#        group: ubuntu
+#        mode: '0400'
+#      become: true
+    - name: create an EJBCA server
+      include_role: 
+        name: ejbca
+
+
+###############################################
+# playbook for configuration of the dbserver  #
+###############################################
+- hosts: dynamic_db
+ 
+  tasks:
+    - name: create a database
+      include_role: 
+        name: databaseserver
+
+...

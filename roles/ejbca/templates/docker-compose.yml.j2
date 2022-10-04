@@ -1,0 +1,15 @@
+# Use root/example as user/password credentials
+version: '3.1'
+
+services:
+  ebjca:
+    image: primekey/ejbca-ce
+    restart: always
+    ports:
+      - 8080:8080
+      - 8443:8443
+    environment:
+      DATABASE_JDBC_URL: "jdbc:mysql://{{ vm_private_ip_db }}:3306/ejbca?characterEncoding=UTF-8"
+      DATABASE_USER: ejbca
+      DATABASE_PASSWORD: {{ ejbca_mysql_password }}
+      TLS_SETUP_ENABLED: simple

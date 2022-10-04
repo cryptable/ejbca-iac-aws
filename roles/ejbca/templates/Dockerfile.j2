@@ -1,0 +1,8 @@
+FROM primekey/ejbca-ce
+
+USER root
+
+COPY web.properties /etc/ejbca/conf/
+
+EXPOSE 8080/tcp
+EXPOSE 8443/tcp

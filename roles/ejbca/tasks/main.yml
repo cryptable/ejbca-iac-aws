@@ -48,6 +48,12 @@
     update_cache: true
   become: true
 
+- name: Create a directory for docker
+  ansible.builtin.file:
+    path: /opt/docker
+    state: directory
+    mode: '0755'
+
 - name: deploy docker file 
   ansible.builtin.unarchive:
     copy: true

@@ -1,0 +1,12 @@
+
+---
+
+ansible_host: 16.171.60.98
+ansible_user: ubuntu
+become_user: ubuntu
+remote_user: ubuntu
+become: true
+vm_private_ip_db: 192.168.2.5
+
+...
+

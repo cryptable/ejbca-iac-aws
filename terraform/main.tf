@@ -161,10 +161,6 @@ resource "aws_instance" "ejbca_core" {
   }
 }
 
-data "template_file" "user_data" {
-  template = "${file("setup_mariadb.sh")}"
-}
-
 resource "aws_instance" "ejbca_db" {
   ami = var.aws_ami_id
   instance_type = "t3.micro"
@@ -175,8 +171,6 @@ resource "aws_instance" "ejbca_db" {
   tags = {
     Name = "terraform-ejbca-aws"
   }
-
-  user_data = "${data.template_file.user_data.rendered}"
 
   root_block_device {
     delete_on_termination = true

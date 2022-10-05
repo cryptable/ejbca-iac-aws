@@ -48,29 +48,25 @@
     update_cache: true
   become: true
 
-- name: Ensures /opt/docker/ejbca dir exists
-  file: 
-    path: /opt/docker/ejbca 
-    state: directory
-  become: true
-
-- name: deploy ejbca configuration 
-  template:
-    src: web.properties.j2
-    dest: /opt/docker/ejbca/web.properties
-  become: true
-
 - name: deploy docker file 
-  template:
-    src: Dockerfile.j2
-    dest: /opt/docker/ejbca/Dockerfile
+  ansible.builtin.unarchive:
+    copy: true
+    creates: /opt/docker
+    src: docker-ejbca.tar.gz
+    dest: /opt/docker
   become: true
+
+# - name: deploy ejbca configuration 
+#   template:
+#     src: web.properties.j2
+#     dest: /opt/docker/docker-ejbca/config/ejbca/web.properties
+#   become: true
 
 - name: Build image and with build args
   community.docker.docker_image:
     name: ejbca
     build:
-      path: /opt/docker/ejbca/
+      path: /opt/docker/docker-ejbca/
     source: build
   become: true
 

@@ -1,0 +1,13 @@
+
+[proxy]
+16.171.60.98
+
+[dynamic_ejbca]
+16.171.60.98
+
+[dynamic_db]
+192.168.2.5
+
+[dynamic_db:vars]
+ansible_ssh_common_args='-o ProxyCommand="ssh -W %h:%p -i ../id_rsa ubuntu@16.171.60.98"'
+
